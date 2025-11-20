@@ -8,8 +8,12 @@
 // Include Application Headers
 #include "test_cluster.h"
 #include "test_host.h"
-#include "testinputs.h"
-#include "testoutputs.h"
+
+#include "testinputs_32x48x64.h"
+#include "testoutputs_32x48x64.h"
+
+// #include "testinputs_16x16x16.h"
+// #include "testoutputs_16x16x16.h"
 
 // Include Target Specific Headers
 #include "soc.h"
@@ -133,7 +137,7 @@ static __attribute__((__section__(".cdata"))) float ops_per_cycle = 0.0f;
  * @return int Return 0 if the test was successful, -1 otherwise.
  */
 int32_t testReturn(void *args) {
-    returnValue_t *retVal = (returnValue_t *)args;
+    argCluster_t *retVal = (argCluster_t *)args;
 
     /*
      * Initialize the Snitch runtime.
@@ -162,6 +166,9 @@ int32_t testReturn(void *args) {
         printf("DeeployNetwork_input_0  @ %p = %p\n", &DeeployNetwork_input_0, testInputVector0);
         printf("DeeployNetwork_input_1  @ %p = %p\n", &DeeployNetwork_input_1, testInputVector1);
         printf("DeeployNetwork_output_0 @ %p = %p\n", &DeeployNetwork_output_0, testOutputVector0);
+
+        printf("Starting MatMul execution (%ux%u x %ux%u = %ux%u) for %d iterations\n", MAT_M,
+               MAT_N, MAT_N, MAT_P, MAT_M, MAT_P, retVal->repitions);
     }
 
     snrt_cluster_hw_barrier();
@@ -173,8 +180,10 @@ int32_t testReturn(void *args) {
      */
     start_cycles = snrt_mcycle();
     if (snrt_is_compute_core()) {
-        MatMul_unrolled_2x2_parallel_s8_rv32im(DeeployNetwork_input_0, DeeployNetwork_input_1,
-                                               DeeployNetwork_output_0, 32, 48, 64);
+        for (int i = 0; i < retVal->repitions; i++) {
+            MatMul_unrolled_2x2_parallel_s8_rv32im(DeeployNetwork_input_0, DeeployNetwork_input_1,
+                                                   DeeployNetwork_output_0, MAT_M, MAT_N, MAT_P);
+        }
     }
     end_cycles = snrt_mcycle();
     printf("RQGemm cycles = %u\n", end_cycles - start_cycles);
@@ -185,7 +194,7 @@ int32_t testReturn(void *args) {
      * per-core.
      */
     if (snrt_is_compute_core()) {
-        float ops = ((float)2 * 32 * 48 * 64) / snrt_cluster_compute_core_num(); // MACs
+        float ops = ((float)MAT_OPS * retVal->repitions) / snrt_cluster_compute_core_num(); // MACs
         float ops_per_cycle_per_core = (float)ops / (float)(end_cycles - start_cycles);
         printf("RQGemm ops/cycle/core = %.6f\n", ops_per_cycle_per_core);
 
@@ -207,7 +216,7 @@ int32_t testReturn(void *args) {
     if (snrt_cluster_core_idx() == 0) {
         int32_t diff;
         int32_t expected, actual;
-        for (uint32_t i = 0; i < 2048; i++) {
+        for (uint32_t i = 0; i < (MAT_M * MAT_P); i++) {
             expected = testOutputVector0[i];
             actual = DeeployNetwork_output_0[i];
             diff = expected - actual;

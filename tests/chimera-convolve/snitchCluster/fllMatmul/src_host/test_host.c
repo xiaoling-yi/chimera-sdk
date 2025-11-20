@@ -27,12 +27,6 @@
 #define CLUSTER 4
 #define STACK_ADDRESS (_chimera_clusterBase[CLUSTER] + 0x20000 - 1)
 
-// Matrix dimensions (from test_cluster.c)
-#define MAT_M 32
-#define MAT_N 48
-#define MAT_P 64
-#define MAT_OPS (2ULL * MAT_M * MAT_N * MAT_P) // 2 ops per MAC
-
 // Timeout for cluster execution (in RTC ticks)
 #define CLUSTER_TIMEOUT_MS 5000
 
@@ -243,14 +237,13 @@ int main(void) {
     printf_log("Initial frequency: %u.%03u MHz\n", (core_freq / 1000000), (core_freq % 1000000));
 
     // Buffer to hold run again
-    char rerun_buffer[32];
+    char input_buffer[32];
     do {
 #if defined(TARGET_PLATFORM_CHIMERA_CONVOLVE) && defined(HARDWARE_BACKEND_ASIC)
         // Ask user for target frequency
         printf_log("Enter target frequency in MHz (10-1000, or -1 to skip FLL configuration): ");
         fflush(stdout);
 
-        char input_buffer[32];
         if (fgets(input_buffer, sizeof(input_buffer), stdin) == NULL) {
             printf("\n");
             printf_log("Error reading input\n");
@@ -258,8 +251,22 @@ int main(void) {
         }
 
         int target_freq_mhz = atoi(input_buffer);
-
         printf("%d\n", target_freq_mhz);
+
+        printf_log("Enter number of repetitions (default 1): ");
+        fflush(stdout);
+
+        if (fgets(input_buffer, sizeof(input_buffer), stdin) == NULL) {
+            printf("\n");
+            printf_log("Error reading input\n");
+            return -1;
+        }
+
+        int repetitions = 1;
+        if (strlen(input_buffer) > 1) {
+            repetitions = atoi(input_buffer);
+        }
+        printf("%d\n", repetitions);
 
         uint32_t actual_freq = core_freq;
 
@@ -294,8 +301,9 @@ int main(void) {
         printf_log("Setting up cluster %d...\n", CLUSTER);
         printf_log("----------------------------------------\n");
 
-        returnValue_t arg_struct = {0};
-        returnValue_t *arg = &arg_struct;
+        argCluster_t arg_struct = {0};
+        arg_struct.repitions = repetitions;
+        argCluster_t *arg = &arg_struct;
 
         void *stack_cluster_ptr[NUM_CLUSTER_CORES];
         generate_snitchCluster_SPs_uniform(CLUSTER, (void *)STACK_ADDRESS, 0x2000,
@@ -308,9 +316,6 @@ int main(void) {
         set_snitchCluster_reset(CLUSTER, 1);
         for (volatile int i = 0; i < 10; i++);
         set_snitchCluster_reset(CLUSTER, 0);
-
-        printf_log("Starting MatMul execution (%ux%u x %ux%u = %ux%u)...\n", MAT_M, MAT_N, MAT_N,
-                   MAT_P, MAT_M, MAT_P);
 
         // Record start time
         clint_mtime_t start_time = clint_get_mtime();
@@ -355,9 +360,6 @@ int main(void) {
                 fromhost = syscall_addr;
             }
         }
-
-        clint_mtime_t end_time = clint_get_mtime();
-        uint32_t elapsed_ticks = end_time.low - start_time.low;
 
         uint32_t retVal = 0;
         if (!timed_out) {
@@ -404,11 +406,11 @@ int main(void) {
         // Ask to run again
         printf_log("Run again? (y/n): ");
         fflush(stdout);
-        if (fgets(rerun_buffer, 2, stdin) == NULL ||
-            (rerun_buffer[0] != 'y' && rerun_buffer[0] != 'Y')) {
+        if (fgets(input_buffer, 2, stdin) == NULL ||
+            (input_buffer[0] != 'y' && input_buffer[0] != 'Y')) {
             break;
         }
-        printf("%s\n", rerun_buffer);
+        printf("%s\n", input_buffer);
 
         if (timed_out) {
             return -1;

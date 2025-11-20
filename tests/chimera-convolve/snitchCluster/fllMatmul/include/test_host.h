@@ -7,10 +7,11 @@
 #include <stdint.h>
 
 typedef struct __attribute__((packed)) {
+    volatile int8_t repitions;
     volatile uint32_t errors;
     volatile uint32_t runtime_cycles;
     volatile uint32_t ops_per_cycle; // Multiplied by 1e3
     volatile uint32_t reserved[4];
-} returnValue_t;
+} argCluster_t;
 
 #endif //_TEST_HOST_INCLUDE_GUARD_
