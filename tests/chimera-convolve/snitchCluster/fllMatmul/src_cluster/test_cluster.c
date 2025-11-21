@@ -186,6 +186,7 @@ int32_t testReturn(void *args) {
         }
     }
     end_cycles = snrt_mcycle();
+    snrt_cluster_hw_barrier();
     printf("RQGemm cycles = %u\n", end_cycles - start_cycles);
     snrt_cluster_hw_barrier();
 

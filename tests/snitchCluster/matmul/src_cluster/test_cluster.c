@@ -184,6 +184,7 @@ int32_t testReturn(void *args) {
                                                DeeployNetwork_output_0, MAT_M, MAT_N, MAT_P);
     }
     end_cycles = snrt_mcycle();
+    snrt_cluster_hw_barrier();
     printf("RQGemm cycles = %u\n", end_cycles - start_cycles);
     snrt_cluster_hw_barrier();
 
