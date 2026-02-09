@@ -277,15 +277,15 @@ def emit_matmul_data(**kwargs):
     data_str += [format_scalar_definition("int8_t", "subtraction_a", subtraction_a)]
     data_str += [format_scalar_definition("int8_t", "subtraction_b", subtraction_b)]
 
-    A = np.random.randint(
-        MIN, MAX, size=(kwargs["M"], kwargs["K"], meshRow, tileSize)
-    ).reshape(-1)
-    data_str += [format_vector_definition("int8_t", "A", A)]
+    # A = np.random.randint(
+    #     MIN, MAX, size=(kwargs["M"], kwargs["K"], meshRow, tileSize)
+    # ).reshape(-1)
+    # data_str += [format_vector_definition("int8_t", "A", A)]
 
-    B = np.random.randint(
-        MIN, MAX, size=(kwargs["K"], kwargs["N"], tileSize, meshCol)
-    ).reshape(-1)
-    data_str += [format_vector_definition("int8_t", "B", B)]
+    # B = np.random.randint(
+    #     MIN, MAX, size=(kwargs["K"], kwargs["N"], tileSize, meshCol)
+    # ).reshape(-1)
+    # data_str += [format_vector_definition("int8_t", "B", B)]
 
     enabled_channel_CSR_num = int(math.ceil(
         (meshRow * meshCol) * output_data_width / bankWidth / 32

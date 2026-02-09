@@ -15,7 +15,8 @@ chimera-convolve:
   snitchCluster/snrt,
   snitchCluster/simpleOffload,
   snitchCluster/KULSimpleOffload,
-  snitchCluster/KULOffload
+  snitchCluster/KULOffload,
+  snitchCluster/KULOffload_automated
 ]]
 [[
 chimera-open:

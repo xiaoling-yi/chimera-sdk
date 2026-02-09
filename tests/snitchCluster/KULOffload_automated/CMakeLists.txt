@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2024 ETH Zurich and University of Bologna
 # SPDX-License-Identifier: Apache-2.0
 
-set(TEST_NAME test_snitchCluster_KULOffload)
+set(TEST_NAME test_snitchCluster_KULOffload_automated)
 
 ######## HOST Code #############################################################
 file(GLOB_RECURSE TEST_HOST_SRCS

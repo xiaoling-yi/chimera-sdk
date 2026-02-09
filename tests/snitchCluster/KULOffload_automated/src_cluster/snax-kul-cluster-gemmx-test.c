@@ -312,24 +312,12 @@ int kul_cluster_gemmx_test(void *args) {
     // Set err value for checking
     int err = 0;
 
-    // Prepare addresses pointers in TCDM for DMA
-    int8_t *local_a_dma, *local_b_dma;
-    int32_t *local_c_dma, *local_d32_dma;
-    int8_t *local_d8_dma;
-
-    // Allocate space in TCDM for DMA
-    local_a_dma = (int8_t *)(snrt_cluster_base_addrl() + delta_physical_a);
-    local_b_dma = (int8_t *)(snrt_cluster_base_addrl() + delta_physical_b);
-    local_c_dma = (int32_t *)(snrt_cluster_base_addrl() + delta_physical_c);
-    local_d32_dma = (int32_t *)(snrt_cluster_base_addrl() + delta_physical_d32);
-    local_d8_dma = (int8_t *)(snrt_cluster_base_addrl() + delta_physical_d8);
-
-    // Prepare addresses pointers in TCDM for streamer
+    // Prepare addresses in TCDM
     int8_t *local_a, *local_b;
     int32_t *local_c, *local_d32;
     int8_t *local_d8;
 
-    // Allocate space in TCDM for streamer
+    // Allocate space in TCDM
     local_a = (int8_t *)(snrt_cluster_base_addrl() + delta_local_a);
     local_b = (int8_t *)(snrt_cluster_base_addrl() + delta_local_b);
     local_c = (int32_t *)(snrt_cluster_base_addrl() + delta_local_c);
@@ -339,36 +327,47 @@ int kul_cluster_gemmx_test(void *args) {
     // Transfer data from L3 to L1
     // Using DMA only
     if (snrt_is_dm_core()) {
-        if (interleaved_address == 1) {
-            snrt_dma_start_1d(local_a, A,
-                              Nbatch * (H + 2 * pad_h) * (W + 2 * pad_w) * Cin * sizeof(int8_t));
-            snrt_dma_start_1d(local_b, B, Cout * Kh * Kw * Cin * sizeof(int8_t));
-        } else {
-            snrt_dma_start_2d(local_a_dma, A, 64 * sizeof(int8_t), 256, 64,
-                              Nbatch * (H + 2 * pad_h) * (W + 2 * pad_w) * Cin / 64);
-            snrt_dma_start_2d(local_b_dma, B, 64 * sizeof(int8_t), 256, 64,
-                              Cout * Kh * Kw * Cin / 64);
-        }
+        snrt_dma_start_1d(local_a, A,
+                          M * K * meshRow * tileSize * sizeof(int8_t));
+        snrt_dma_start_1d(local_b, B,
+                          N * K * tileSize * meshCol * sizeof(int8_t));
+
         snrt_dma_wait_all();
     }
 
     // Wait for DMA to finish
     snrt_cluster_hw_barrier();
     if (snrt_is_dm_core()) {
-        if (interleaved_address == 1) {
-            snrt_dma_start_1d(local_c, C, M * N * meshRow * meshCol * sizeof(int32_t));
-        } else {
-            snrt_dma_start_2d(local_c_dma, C, 16 * sizeof(int32_t), 256, 16 * sizeof(int32_t),
-                              M * N * meshRow * meshCol / 16);
-        }
+        snrt_dma_start_1d(local_c, C,
+                          M * N * meshRow * meshCol * sizeof(int32_t));
         snrt_dma_wait_all();
     }
 
     snrt_cluster_hw_barrier();
 
+    int32_t Aslstride[] = {Aslstride0};
+    int32_t Atlbound[] = {Atlbound0, Atlbound1, Atlbound2,
+                          Atlbound3, Atlbound4, Atlbound5};
+    int32_t Atlstride[] = {Atlstride0, Atlstride1, Atlstride2,
+                           Atlstride3, Atlstride4, Atlstride5};
+    int32_t Bslstride[] = {Bslstride0};
+    int32_t Btlbound[] = {Btlbound0, Btlbound1, Btlbound2};
+    int32_t Btlstride[] = {Btlstride0, Btlstride1, Btlstride2};
+    int32_t D8slstride[] = {D8slstride0};
+    int32_t D8tlbound[] = {D8tlbound0, D8tlbound1, D8tlbound2, D8tlbound3};
+    int32_t D8tlstride[] = {D8tlstride0, D8tlstride1, D8tlstride2, D8tlstride3};
+    int32_t Cslstride[] = {Cslstride0};
+    int32_t Ctlbound[] = {Ctlbound0, Ctlbound1, Ctlbound2, Ctlbound3};
+    int32_t Ctlstride[] = {Ctlstride0, Ctlstride1, Ctlstride2, Ctlstride3};
+    int32_t D32slstride[] = {D32slstride0};
+    int32_t D32tlbound[] = {D32tlbound0, D32tlbound1, D32tlbound2, D32tlbound3};
+    int32_t D32tlstride[] = {D32tlstride0, D32tlstride1, D32tlstride2,
+                             D32tlstride3};
+
     if (snrt_cluster_core_idx() == 0) {
         // Set Streamer configuration CSR for conv2d
-        set_gemmx_streamer_csr(Aslstride0, Aslstride1, Atlbound0, Atlstride0, Atlbound1, Atlstride1,
+        set_gemmx_streamer_csr(
+            Aslstride0, Aslstride1, Atlbound0, Atlstride0, Atlbound1, Atlstride1,
                                Atlbound2, Atlstride2, Atlbound3, Atlstride3, Atlbound4, Atlstride4,
                                Atlbound5, Atlstride5, set_addr_remap_index_A,
 
@@ -389,42 +388,42 @@ int kul_cluster_gemmx_test(void *args) {
                                channel_en_C, broadcast_C);
 
         // Set GEMMX configuration CSR
-        uint32_t subtraction_setting = gen_subtraction_config(subtraction_a, subtraction_b);
+        uint32_t subtraction_setting =
+            gen_subtraction_config(subtraction_a, subtraction_b);
 
-        uint32_t csr0 = gen_csr0_config(input_zp_i, output_zp_i, max_int_i, min_int_i);
+        uint32_t csr0 =
+            gen_csr0_config(input_zp_i, output_zp_i, max_int_i, min_int_i);
         uint32_t csr1 = gen_csr1_config(double_round_i);
 
-        set_gemmx_csr(K, N, M, subtraction_setting, csr0, csr1, shared_bitpacked_shift0,
-                      shared_bitpacked_shift1, shared_multiplier0, shared_multiplier1,
-                      shared_multiplier2, shared_multiplier3, shared_multiplier4,
-                      shared_multiplier5, shared_multiplier6, shared_multiplier7, M * N,
+        set_gemmx_csr(K, N, M, subtraction_setting, csr0, csr1, shared_bitpacked_shift[0],
+                      shared_bitpacked_shift[1], shared_multiplier[0], shared_multiplier[1],
+                      shared_multiplier[2], shared_multiplier[3], shared_multiplier[4],
+                      shared_multiplier[5], shared_multiplier[6], shared_multiplier[7], M * N,
                       bypassSIMD);
 
-        // while (1) {
-            // Set CSR to start Streamer for conv2d
-            set_gemmx_streamer_start();
+        // Set CSR to start Streamer for conv2d
+        set_gemmx_streamer_start();
 
-            // Set CSR to start GEMM
-            set_gemmx_start();
+        // Set CSR to start GEMM
+        set_gemmx_start();
 
-            // Poll until Streamer and GEMM accelerator finish
-            wait_gemmx_and_streamer();
-        // }
+        // Poll until Streamer and GEMM accelerator finish
+        wait_gemmx_and_streamer();
 
         // check the result of the implicit im2col convolution
-        if (interleaved_address == 1) {
-            if (!bypassSIMD) {
-                err += check_gemmx_result_D8(local_d8, D8, Batch, M, N, false);
-            } else {
-                err += check_gemmx_result_D32(local_d32, D32, Batch, M, N, false);
-            }
+        if (!bypassSIMD) {
+            err += check_gemmx_result_D8(local_d8, D8, Batch, M, N, false);
         } else {
-            if (!bypassSIMD) {
-                err += check_gemmx_result_D8(local_d8_dma, D8, Batch, M, N, true);
-            } else {
-                err += check_gemmx_result_D32(local_d32_dma, D32, Batch, M, N, true);
-            }
+            err += check_gemmx_result_D32(local_d32, D32, Batch, M, N, false);
         }
+        int32_t gemmx_cycles = read_gemmx_perf_counter();
+        int32_t gemmx_streamer_cycles = read_gemmx_streamer_perf_counter();
+        printf("Workload size: M = %d, N = %d, K = %d\n", M, N, K);
+        printf("SNAX GEMM Ideal cycles: %d\n", M * K * N);
+        printf("SNAX GEMM cycles: %d\n", gemmx_cycles);
+        printf("SNAX GEMM Streamer cycles: %d\n", gemmx_streamer_cycles);
+        printf("SNAX GEMM Matmul: %s, Error: %d . bypassSIMD = %d .\n",
+               err ? "FAIL" : "PASS", err, bypassSIMD);
     };
 
     // printf("GEMMX test completed with %d errors.\r\n", err);
