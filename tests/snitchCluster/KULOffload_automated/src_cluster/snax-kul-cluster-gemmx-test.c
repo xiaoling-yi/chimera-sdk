@@ -367,20 +367,20 @@ int kul_cluster_gemmx_test(void *args) {
     if (snrt_cluster_core_idx() == 0) {
         // Set Streamer configuration CSR for conv2d
         set_gemmx_streamer_csr(
-            Aslstride0, Aslstride1, Atlbound0, Atlstride0, Atlbound1, Atlstride1,
+            0, Aslstride0, Atlbound0, Atlstride0, Atlbound1, Atlstride1,
                                Atlbound2, Atlstride2, Atlbound3, Atlstride3, Atlbound4, Atlstride4,
                                Atlbound5, Atlstride5, set_addr_remap_index_A,
 
-                               Bslstride0, Bslstride1, Btlbound0, Btlstride0, Btlbound1, Btlstride1,
+                               0, Bslstride0, Btlbound0, Btlstride0, Btlbound1, Btlstride1,
                                Btlbound2, Btlstride2, set_addr_remap_index_B,
 
-                               D8slstride0, D8slstride1, D8tlbound0, D8tlstride0, D8tlbound1,
+                               0, D8slstride0, D8tlbound0, D8tlstride0, D8tlbound1,
                                D8tlstride1, D8tlbound2, D8tlstride2, set_addr_remap_index_D8,
 
-                               Cslstride0, Cslstride1, Ctlbound0, Ctlstride0, Ctlbound1, Ctlstride1,
+                               Cslstride0, 64, Ctlbound0, Ctlstride0, Ctlbound1, Ctlstride1,
                                Ctlbound2, Ctlstride2, set_addr_remap_index_C,
 
-                               D32slstride0, D32slstride1, D32tlbound0, D32tlstride0, D32tlbound1,
+                               D32slstride0, 64, D32tlbound0, D32tlstride0, D32tlbound1,
                                D32tlstride1, D32tlbound2, D32tlstride2, set_addr_remap_index_D32,
 
                                delta_local_a, delta_local_b, delta_local_d8, delta_local_c,

@@ -30,6 +30,7 @@ np.random.seed(42)
 # Add stdint.h header
 def emit_header_file(**kwargs):
     emit_str = "#include <stdint.h>\n\n"
+    emit_str = "#pragma once\n\n"
     emit_str += emit_gemmx_data(**kwargs)
     return emit_str
 
