@@ -7,6 +7,8 @@
 #include "soc_addr_map.h"
 #include "kultest/snax-kul-cluster-gemmx-test.h"
 
+#include "kultest/gemmx/data/data.h"
+
 int32_t gen_size_config(uint8_t Batch, uint8_t M, uint8_t K, uint8_t N) {
     return ((int32_t)Batch << 24) | ((int32_t)M << 16) | ((int32_t)K << 8) | (int32_t)N;
 }
@@ -367,14 +369,14 @@ int kul_cluster_gemmx_test(void *args) {
     if (snrt_cluster_core_idx() == 0) {
         // Set Streamer configuration CSR for conv2d
         set_gemmx_streamer_csr(
-            0, Aslstride0, Atlbound0, Atlstride0, Atlbound1, Atlstride1,
+            1, Aslstride0, Atlbound0, Atlstride0, Atlbound1, Atlstride1,
                                Atlbound2, Atlstride2, Atlbound3, Atlstride3, Atlbound4, Atlstride4,
                                Atlbound5, Atlstride5, set_addr_remap_index_A,
 
-                               0, Bslstride0, Btlbound0, Btlstride0, Btlbound1, Btlstride1,
+                               1, Bslstride0, Btlbound0, Btlstride0, Btlbound1, Btlstride1,
                                Btlbound2, Btlstride2, set_addr_remap_index_B,
 
-                               0, D8slstride0, D8tlbound0, D8tlstride0, D8tlbound1,
+                               1, D8slstride0, D8tlbound0, D8tlstride0, D8tlbound1,
                                D8tlstride1, D8tlbound2, D8tlstride2, set_addr_remap_index_D8,
 
                                Cslstride0, 64, Ctlbound0, Ctlstride0, Ctlbound1, Ctlstride1,
@@ -385,7 +387,7 @@ int kul_cluster_gemmx_test(void *args) {
 
                                delta_local_a, delta_local_b, delta_local_d8, delta_local_c,
                                delta_local_d32, bypassSIMD, transposed_A, transposed_B,
-                               channel_en_C, broadcast_C);
+                               channel_en_C[0], broadcast_C);
 
         // Set GEMMX configuration CSR
         uint32_t subtraction_setting =
@@ -418,12 +420,12 @@ int kul_cluster_gemmx_test(void *args) {
         }
         int32_t gemmx_cycles = read_gemmx_perf_counter();
         int32_t gemmx_streamer_cycles = read_gemmx_streamer_perf_counter();
-        printf("Workload size: M = %d, N = %d, K = %d\n", M, N, K);
-        printf("SNAX GEMM Ideal cycles: %d\n", M * K * N);
-        printf("SNAX GEMM cycles: %d\n", gemmx_cycles);
-        printf("SNAX GEMM Streamer cycles: %d\n", gemmx_streamer_cycles);
-        printf("SNAX GEMM Matmul: %s, Error: %d . bypassSIMD = %d .\n",
-               err ? "FAIL" : "PASS", err, bypassSIMD);
+        // printf("Workload size: M = %d, N = %d, K = %d\n", M, N, K);
+        // printf("SNAX GEMM Ideal cycles: %d\n", M * K * N);
+        // printf("SNAX GEMM cycles: %d\n", gemmx_cycles);
+        // printf("SNAX GEMM Streamer cycles: %d\n", gemmx_streamer_cycles);
+        // printf("SNAX GEMM Matmul: %s, Error: %d . bypassSIMD = %d .\n",
+        //        err ? "FAIL" : "PASS", err, bypassSIMD);
     };
 
     // printf("GEMMX test completed with %d errors.\r\n", err);

@@ -9,8 +9,6 @@
 #include "snrt/snrt_TO.h"
 // #include "snrt/csr.h"
 
-#include "gemmx/data/data.h"
-
 #include "gemmx/snax-gemmx-params.h"
 #include "gemmx/snax-gemmx-lib.h"
 #include "gemmx/streamer_csr_addr_map.h"
