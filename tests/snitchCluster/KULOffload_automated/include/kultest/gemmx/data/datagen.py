@@ -390,15 +390,15 @@ def emit_matmul_data(**kwargs):
     # Use the new functions
     # ============================================================
     A = generate_toggling_A(kwargs["M"], kwargs["K"], meshRow, tileSize,
-                            kwargs.get("input_toggle_rate", 0.0))
+                            kwargs["input_toggle_rate"])
     data_str += [format_vector_definition("int8_t", "A", A)]
 
     B = generate_sparse_B(kwargs["K"], kwargs["N"], tileSize, meshCol,
-                        kwargs.get("weight_sparsity", 0.0))
+                        kwargs["weight_sparsity"])
     data_str += [format_vector_definition("int8_t", "B", B)]
 
     # print(f"[INFO] Generated B with {np.mean(B==0)*100:.2f}% zeros "
-        # f"(target {kwargs.get('weight_sparsity',0)*100:.2f}%)")
+    #     f"(target {kwargs.get('weight_sparsity',0)*100:.2f}%)")
 
     def measure_toggle(A_flat, tileSize, meshRow):
         bits = np.unpackbits(A_flat.view(np.uint8))
@@ -526,9 +526,9 @@ def main():
         required=True,
         help="Select hardware config file kernel",
     )
-    parser.add_argument("--weight_sparsity", type=float, default=0.0,
+    parser.add_argument("--weight_sparsity", type=float, default=None,
                         help="Fraction of zero weights (0.0–0.99).")
-    parser.add_argument("--input_toggle_rate", type=float, default=0.0,
+    parser.add_argument("--input_toggle_rate", type=float, default=None,
                         help="Fraction of bits toggling per cycle (0.0–1.0).")
 
     args = parser.parse_args()
@@ -544,8 +544,18 @@ def main():
     # Merge dictionaries (hw overrides param in case of conflicts)
     merged_config = {**param, **hw}
 
-    merged_config["weight_sparsity"] = args.weight_sparsity
-    merged_config["input_toggle_rate"] = args.input_toggle_rate
+    # priority: cmd args > param config
+    if args.weight_sparsity is not None:
+        assert 0.0 <= args.weight_sparsity <= 1.0
+        merged_config["weight_sparsity"] = args.weight_sparsity
+    elif "weight_sparsity" not in merged_config:
+        raise ValueError("weight_sparsity must be specified")
+
+    if args.input_toggle_rate is not None:
+        assert 0.0 <= args.input_toggle_rate <= 1.0
+        merged_config["input_toggle_rate"] = args.input_toggle_rate
+    elif "input_toggle_rate" not in merged_config:
+        raise ValueError("input_toggle_rate must be specified")
 
     # Emit header file
     print(emit_header_file(**merged_config))

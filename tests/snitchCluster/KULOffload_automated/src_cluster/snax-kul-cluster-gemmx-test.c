@@ -403,14 +403,17 @@ int kul_cluster_gemmx_test(void *args) {
                       shared_multiplier[5], shared_multiplier[6], shared_multiplier[7], M * N,
                       bypassSIMD);
 
-        // Set CSR to start Streamer for conv2d
-        set_gemmx_streamer_start();
+        for (int i = 0; i < 1000000; i++){
+            // Set CSR to start Streamer for conv2d
+            set_gemmx_streamer_start();
 
-        // Set CSR to start GEMM
-        set_gemmx_start();
+            // Set CSR to start GEMM
+            set_gemmx_start();
 
-        // Poll until Streamer and GEMM accelerator finish
-        wait_gemmx_and_streamer();
+            // Poll until Streamer and GEMM accelerator finish
+            wait_gemmx_and_streamer();
+        }
+
 
         // check the result of the implicit im2col convolution
         if (!bypassSIMD) {
